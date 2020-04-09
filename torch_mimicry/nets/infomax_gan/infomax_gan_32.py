@@ -8,6 +8,7 @@ from torch_mimicry.nets.infomax_gan import infomax_gan_base
 from torch_mimicry.modules.layers import SNConv2d, SNLinear
 from torch_mimicry.modules.resblocks import DBlockOptimized, DBlock, GBlock
 
+from torch_mimicry.nets.infomax_gan.attentive_densenet import AttentiveDensenet
 
 class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
     r"""
@@ -20,21 +21,37 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         loss_type (str): Name of loss to use for GAN loss.        
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
-    def __init__(self, nz=128, ngf=256, bottom_width=4, **kwargs):
+    def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, **kwargs):
         super().__init__(nz=nz, ngf=ngf, bottom_width=bottom_width, **kwargs)
+
+        self.use_nfl = use_nfl
+        if use_nfl:
+            print('using nfl!')
+            from networks.cosgrove.attentive_densenet import AttentiveDensenet
+            self.ad = AttentiveDensenet(layer_channels=[self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf], key_size=32, val_size=32, n_heads=4)
 
         # Build the layers
         self.l1 = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
         self.block2 = GBlock(self.ngf, self.ngf, upsample=True)
         self.block3 = GBlock(self.ngf, self.ngf, upsample=True)
         self.block4 = GBlock(self.ngf, self.ngf, upsample=True)
-        self.b5 = nn.BatchNorm2d(self.ngf)
-        self.c5 = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
+        #self.b5 = nn.BatchNorm2d(self.ngf)
+        #self.c5 = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
+        self.l1_b = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
+        self.block2_b = GBlock(self.ngf, self.ngf, upsample=True)
+        self.block3_b = GBlock(self.ngf, self.ngf, upsample=True)
+        self.block4_b = GBlock(self.ngf, self.ngf, upsample=True)
+        self.b5_b = nn.BatchNorm2d(self.ngf)
+        self.c5_b = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
         self.activation = nn.ReLU(True)
 
         # Initialise the weights
         nn.init.xavier_uniform_(self.l1.weight.data, 1.0)
-        nn.init.xavier_uniform_(self.c5.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.l1_b.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.c5_b.weight.data, 1.0)
 
     def forward(self, x):
         r"""
@@ -46,14 +63,33 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         Returns:
             Tensor: A batch of fake images of shape (N, C, H, W).
         """
-        h = self.l1(x)
+        if self.use_nfl:
+            h = self.l1(x)
+            h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
+            h = self.ad(h,write=True,read=False)
+            h = self.block2(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block3(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block4(h)
+            h = self.ad(h,write=True,read=False)
+
+        h = self.l1_b(x)
         h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
-        h = self.block2(h)
-        h = self.block3(h)
-        h = self.block4(h)
-        h = self.b5(h)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block2_b(h)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block3_b(h)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block4_b(h)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.b5_b(h)
         h = self.activation(h)
-        h = torch.tanh(self.c5(h))
+        h = torch.tanh(self.c5_b(h))
 
         return h
 
