@@ -18,7 +18,7 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         nz (int): Noise dimension for upsampling.
         ngf (int): Variable controlling generator feature map sizes.
         bottom_width (int): Starting width for upsampling generator output to an image.
-        loss_type (str): Name of loss to use for GAN loss.        
+        loss_type (str): Name of loss to use for GAN loss.
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
     def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, **kwargs):
@@ -27,7 +27,7 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         self.use_nfl = use_nfl
         if use_nfl:
             print('using nfl!')
-            from networks.cosgrove.attentive_densenet import AttentiveDensenet
+            #from networks.cosgrove.attentive_densenet import AttentiveDensenet
             self.ad = AttentiveDensenet(layer_channels=[self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf], key_size=32, val_size=32, n_heads=4)
 
         # Build the layers
@@ -63,6 +63,10 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         Returns:
             Tensor: A batch of fake images of shape (N, C, H, W).
         """
+
+        if self.use_nfl: #attentive_densenet:
+           self.ad.reset()
+
         if self.use_nfl:
             h = self.l1(x)
             h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)

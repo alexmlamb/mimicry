@@ -1,15 +1,15 @@
 '''
-Module which takes new (spatial) layers and performs attention to weight over all previous spatial layers.  
+Module which takes new (spatial) layers and performs attention to weight over all previous spatial layers.
 
-Needs to know beforehand number of channels in each layer.  
+Needs to know beforehand number of channels in each layer.
 
--For key and query, do mean-pooling over spatial dimensions and then do an FC-layer.  
+-For key and query, do mean-pooling over spatial dimensions and then do an FC-layer.
 
--For value, do a conv-layer.  When using on the current time-step, resize values to the current size, then reshape.  
+-For value, do a conv-layer.  When using on the current time-step, resize values to the current size, then reshape.
 
-(new_layer) --> (attentive_input).  Keeps and updates a key_lst and value_lst internally.  
+(new_layer) --> (attentive_input).  Keeps and updates a key_lst and value_lst internally.
 
--Should attention be same or different object?  Probably easiest to make it the same object.  
+-Should attention be same or different object?  Probably easiest to make it the same object.
 
 -Need to figure out how to resize the value layers
 
@@ -44,7 +44,7 @@ class AttentiveDensenet(nn.Module):
             out_layer = nn.Sequential(nn.Conv2d(ch + val_size*n_heads,ch,3,stride=1,padding=1), nn.BatchNorm2d(ch), nn.ReLU(), nn.Conv2d(ch, ch, 3,stride=1,padding=1))
             self.out_layers.append(out_layer)
             self.gammas.append(nn.Parameter(torch.tensor(0.0)))
- 
+
             for convs in [self.key_layers[-1], self.query_layers[-1], self.val_layers[-1], out_layer[0], out_layer[3]]:
                 nn.init.xavier_uniform(convs.weight.data, 1.)
 
@@ -64,8 +64,9 @@ class AttentiveDensenet(nn.Module):
         self.layer_index = 0
 
     def forward(self, x, read, write):
-    
+
         sz_b, ch, h, w = x.shape
+
 
         if write:
             h_key = self.key_layers[self.layer_index](x) #bs x n_heads*key_size x h x w
@@ -85,7 +86,7 @@ class AttentiveDensenet(nn.Module):
 
         #print('key shape', key.shape)
         #print('query shape', query.shape)
-        
+
         vals_reshaped = []
         keys_reshaped = []
 
@@ -93,7 +94,7 @@ class AttentiveDensenet(nn.Module):
 
             val = self.val_lst[ind]
             key = self.key_lst[ind]
-            
+
             if val is None:
                 assert key is None
                 continue
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 
     ad.reset()
 
-    for ch in channels: 
+    for ch in channels:
 
         if ch == 3:
             h = 32
