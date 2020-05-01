@@ -8,20 +8,28 @@ from torch_mimicry.nets.infomax_gan import infomax_gan_base
 from torch_mimicry.modules.layers import SNConv2d, SNLinear
 from torch_mimicry.modules.resblocks import DBlockOptimized, DBlock, GBlock
 
+from torch_mimicry.nets.infomax_gan.attentive_densenet import AttentiveDensenet
 
 class InfoMaxGANGenerator128(infomax_gan_base.InfoMaxGANBaseGenerator):
-    r"""
+    """
     ResNet backbone generator for InfoMax-GAN.
-
     Attributes:
         nz (int): Noise dimension for upsampling.
         ngf (int): Variable controlling generator feature map sizes.
         bottom_width (int): Starting width for upsampling generator output to an image.
-        loss_type (str): Name of loss to use for GAN loss.        
+        loss_type (str): Name of loss to use for GAN loss.
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
-    def __init__(self, nz=128, ngf=1024, bottom_width=4, **kwargs):
+    def __init__(self, nz=128, ngf=1024, bottom_width=4, use_nfl=True, key_size=32, val_size=32, n_heads = 4, topk=3,  **kwargs):
         super().__init__(nz=nz, ngf=ngf, bottom_width=bottom_width, **kwargs)
+
+        self.use_nfl = use_nfl
+        if use_nfl:
+            print('using nfl!', key_size, val_size, n_heads, topk)
+            layer_channels = [self.ngf,self.ngf,self.ngf>>1,self.ngf>>2,self.ngf>>3,self.ngf>>4] + [self.ngf,self.ngf,self.ngf>>1,self.ngf>>2,self.ngf>>3,self.ngf>>4]
+            self.ad = AttentiveDensenet(layer_channels=layer_channels,  key_size=key_size, val_size=val_size, n_heads=n_heads, topk=topk)
+
+
 
         # Build the layers
         self.l1 = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
@@ -30,34 +38,70 @@ class InfoMaxGANGenerator128(infomax_gan_base.InfoMaxGANBaseGenerator):
         self.block4 = GBlock(self.ngf >> 1, self.ngf >> 2, upsample=True)
         self.block5 = GBlock(self.ngf >> 2, self.ngf >> 3, upsample=True)
         self.block6 = GBlock(self.ngf >> 3, self.ngf >> 4, upsample=True)
-        self.b7 = nn.BatchNorm2d(self.ngf >> 4)
-        self.c7 = nn.Conv2d(self.ngf >> 4, 3, 3, 1, padding=1)
+        #self.b7 = nn.BatchNorm2d(self.ngf >> 4)
+        #self.c7 = nn.Conv2d(self.ngf >> 4, 3, 3, 1, padding=1)
+
+
+        self.l1_b = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
+        self.block2_b = GBlock(self.ngf, self.ngf, upsample=True)
+        self.block3_b = GBlock(self.ngf, self.ngf >> 1, upsample=True)
+        self.block4_b = GBlock(self.ngf >> 1, self.ngf >> 2, upsample=True)
+        self.block5_b = GBlock(self.ngf >> 2, self.ngf >> 3, upsample=True)
+        self.block6_b = GBlock(self.ngf >> 3, self.ngf >> 4, upsample=True)
+        self.b7_b = nn.BatchNorm2d(self.ngf >> 4)
+        self.c7_b = nn.Conv2d(self.ngf >> 4, 3, 3, 1, padding=1)
+
         self.activation = nn.ReLU(True)
 
         # Initialise the weights
         nn.init.xavier_uniform_(self.l1.weight.data, 1.0)
-        nn.init.xavier_uniform_(self.c7.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.l1_b.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.c7_b.weight.data, 1.0)
+        #nn.init.xavier_uniform_(self.c7.weight.data, 1.0)
 
     def forward(self, x):
         r"""
         Feedforwards a batch of noise vectors into a batch of fake images.
-
         Args:
             x (Tensor): A batch of noise vectors of shape (N, nz).
-
         Returns:
             Tensor: A batch of fake images of shape (N, C, H, W).
         """
-        h = self.l1(x)
+        if self.use_nfl:
+            self.ad.reset()
+            h = self.l1(x)
+            h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
+            h = self.ad(h,write=True,read=False)
+            h = self.block2(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block3(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block4(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block5(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block6(h)
+            h = self.ad(h,write=True,read=False)
+            #h = self.b7(h)
+            #h = self.activation(h)
+            #h = torch.tanh(self.c7(h))
+
+        h = self.l1_b(x)
         h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
-        h = self.block2(h)
-        h = self.block3(h)
-        h = self.block4(h)
-        h = self.block5(h)
-        h = self.block6(h)
-        h = self.b7(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.block2_b(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.block3_b(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.block4_b(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.block5_b(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.block6_b(h)
+        h = self.ad(h,write=True,read=True)
+        h = self.b7_b(h)
         h = self.activation(h)
-        h = torch.tanh(self.c7(h))
+        h = torch.tanh(self.c7_b(h))
 
         return h
 
@@ -65,7 +109,6 @@ class InfoMaxGANGenerator128(infomax_gan_base.InfoMaxGANBaseGenerator):
 class InfoMaxGANDiscriminator128(infomax_gan_base.BaseDiscriminator):
     r"""
     ResNet backbone discriminator for SNGAN-InfoMax.
-
     Attributes:
         nrkhs (int): The RKHS dimension R to project the local and global features to.
         ndf (int): Variable controlling discriminator feature map sizes.
@@ -119,10 +162,8 @@ class InfoMaxGANDiscriminator128(infomax_gan_base.BaseDiscriminator):
         r"""
         Feedforwards a batch of real/fake images and produces a batch of GAN logits,
         local features of the images, and global features of the images.
-
         Args:
             x (Tensor): A batch of images of shape (N, C, H, W).
-
         Returns:
             Tensor: A batch of GAN logits of shape (N, 1).
             Tensor: A batch of local features of shape (N, ndf, H>>2, W>>2).

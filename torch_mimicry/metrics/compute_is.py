@@ -68,7 +68,9 @@ def inception_score(netG,
     np.random.seed(seed)
 
     # Build inception
-    inception_path = os.path.join(log_dir, 'metrics/inception_model')
+    inception_path = '/home/anirudh/nips2020/mimicry/examples/log/example/metrics/inception_model/'
+    #classify_image_graph_def.pb
+    #inception_path = os.path.join(log_dir, 'metrics/inception_model')
     inception_utils.create_inception_graph(inception_path)
 
     # Inference variables

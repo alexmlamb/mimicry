@@ -202,6 +202,7 @@ def fid_score(num_real_samples,
     np.random.seed(seed)
 
     # Setup directories
+    #inception_path = '/scratch/anirudhg/nips2020/mimicry/log/example/metrics/inception_model/'
     inception_path = os.path.join(log_dir, 'metrics', 'inception_model')
 
     # Setup the inception graph

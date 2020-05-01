@@ -21,14 +21,13 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         loss_type (str): Name of loss to use for GAN loss.
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
-    def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, **kwargs):
+    def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, key_size=32, val_size=32, n_heads = 4, topk=3,  **kwargs):
         super().__init__(nz=nz, ngf=ngf, bottom_width=bottom_width, **kwargs)
 
         self.use_nfl = use_nfl
         if use_nfl:
-            print('using nfl!')
-            #from networks.cosgrove.attentive_densenet import AttentiveDensenet
-            self.ad = AttentiveDensenet(layer_channels=[self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf], key_size=32, val_size=32, n_heads=4)
+            print('using nfl!', key_size, val_size, n_heads, topk)
+            self.ad = AttentiveDensenet(layer_channels=[self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf], key_size=key_size, val_size=val_size, n_heads=n_heads, topk=topk)
 
         # Build the layers
         self.l1 = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)

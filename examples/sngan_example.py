@@ -50,7 +50,7 @@ if __name__ == "__main__":
         dataset_name='cifar10',
         num_subsets=50,
         subset_size=1000,
-        evaluate_step=100000,        
+        evaluate_step=100000,
         device=device)
 
     # Evaluate inception score
@@ -59,5 +59,5 @@ if __name__ == "__main__":
         log_dir='./log/example',
         netG=netG,
         num_samples=50000,
-        evaluate_step=100000,        
+        evaluate_step=100000,
         device=device)

@@ -109,17 +109,15 @@ def get_fake_data_images(num_samples, root='./datasets', size=32, **kwargs):
         **kwargs)
 
     images = get_random_images(dataset, num_samples)
-
     return images
 
 
 def get_lsun_bedroom_images(num_samples,
-                            root='./datasets',
+                            root='/home/anirudh/lsun/',
                             size=128,
                             **kwargs):
     """
     Loads randomly sampled LSUN-Bedroom training images.
-
     Args:
         num_samples (int): The number of images to randomly sample.
         root (str): The root directory where all datasets are stored.
@@ -188,7 +186,7 @@ def get_stl10_images(num_samples, root='./datasets', size=48, **kwargs):
     return images
 
 
-def get_cifar10_images(num_samples, root="./datasets", **kwargs):
+def get_cifar10_images(num_samples, root="/home/anirudh/nips2020/mimicry/examples/datasets/", **kwargs):
     """
     Loads randomly sampled CIFAR-10 training images.
 

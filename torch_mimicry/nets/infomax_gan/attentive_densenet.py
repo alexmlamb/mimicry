@@ -21,7 +21,7 @@ from torch_mimicry.nets.infomax_gan.attention import ScaledDotProductAttention
 import numpy as np
 
 class AttentiveDensenet(nn.Module):
-    def __init__(self, layer_channels, key_size, val_size, n_heads):
+    def __init__(self, layer_channels, key_size, val_size, n_heads, topk):
         super(AttentiveDensenet, self).__init__()
 
         self.layer_channels = layer_channels
@@ -56,7 +56,7 @@ class AttentiveDensenet(nn.Module):
 
         self.layer_index = None
 
-        self.attn = ScaledDotProductAttention(np.power(key_size, 0.5))
+        self.attn = ScaledDotProductAttention(np.power(key_size, 0.5), topk)
 
     def reset(self):
         self.key_lst = []
@@ -119,6 +119,10 @@ class AttentiveDensenet(nn.Module):
 
         vals_tensor = torch.cat(vals_reshaped, dim = 1)
         keys_tensor = torch.cat(keys_reshaped, dim = 1)
+
+
+        keys_tensor = torch.cat([keys_tensor, torch.zeros_like(keys_tensor[:,0:1])], dim=1)
+        vals_tensor = torch.cat([vals_tensor, torch.zeros_like(vals_tensor[:,0:1])], dim=1)
 
         #print('query shape', query.shape)
         #print('vals tensor shape', vals_tensor.shape)

@@ -7,7 +7,7 @@ from torch_mimicry.nets.infomax_gan.sparse_attn import SparseAttention
 class ScaledDotProductAttention(nn.Module):
     ''' Scaled Dot-Product Attention '''
 
-    def __init__(self, temperature, dropout=0.1):
+    def __init__(self, temperature, topk=3, dropout=0.1):
         super().__init__()
         self.temperature = temperature
         #self.dropout = nn.Dropout(attn_dropout)
@@ -15,7 +15,7 @@ class ScaledDotProductAttention(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-        self.sa = SparseAttention()
+        self.sa = SparseAttention(top_k=topk)
 
     def forward(self, q, k, v, mask=None):
 
@@ -29,7 +29,8 @@ class ScaledDotProductAttention(nn.Module):
             attn = attn.masked_fill(mask == 0, -1e9)
 
 
-        attn = self.dropout(F.softmax(attn, dim=-1))
+        attn = F.softmax(attn, dim=-1)
+
         if self.use_sparse:
             mb, ins, outs = attn.shape[0], attn.shape[1], attn.shape[2]
             sparse_attn = attn.reshape((mb*ins, outs))
