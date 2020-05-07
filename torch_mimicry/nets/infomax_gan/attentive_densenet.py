@@ -20,14 +20,40 @@ import torch.nn.functional as F
 from torch_mimicry.nets.infomax_gan.attention import ScaledDotProductAttention
 import numpy as np
 
+class SpaceToDepth(nn.Module):
+    def __init__(self, block_size):
+        super(SpaceToDepth, self).__init__()
+        self.block_size = block_size
+        self.block_size_sq = block_size*block_size
+
+    def forward(self, input):
+
+        output = input.permute(0, 2, 3, 1)
+        (batch_size, s_height, s_width, s_depth) = output.size()
+        d_depth = s_depth * self.block_size_sq
+        d_width = int(s_width / self.block_size)
+        d_height = int(s_height / self.block_size)
+        t_1 = output.split(self.block_size, 2)
+        stack = [t_t.reshape(batch_size, d_height, d_depth) for t_t in t_1]
+        output = torch.stack(stack, 1)
+        output = output.permute(0, 2, 1, 3)
+        output = output.permute(0, 3, 1, 2)
+        output = output.reshape((output.shape[0], self.block_size_sq, output.shape[1]//self.block_size_sq, output.shape[2], output.shape[3]))
+        output = output.permute(1,0,2,3,4)
+        return output
+
 class AttentiveDensenet(nn.Module):
-    def __init__(self, layer_channels, key_size, val_size, n_heads):
+    def __init__(self, layer_channels, key_size, val_size, n_heads, position_attend):
         super(AttentiveDensenet, self).__init__()
 
         self.layer_channels = layer_channels
         self.key_size = key_size
         self.val_size = val_size
         self.n_heads = n_heads
+
+        self.position_attend = position_attend
+
+        print('position attend?', position_attend)
 
         self.key_layers = []
         self.query_layers = []
@@ -99,27 +125,25 @@ class AttentiveDensenet(nn.Module):
                 assert key is None
                 continue
 
-            val_resized = F.interpolate(val, (h,w), mode='nearest')
-            key_resized = F.interpolate(key, (h,w), mode='nearest')
+            if self.position_attend and val.shape[2] > h:
+                val_resized = SpaceToDepth(val.shape[2]//h)(val)
+                key_resized = SpaceToDepth(key.shape[2]//h)(key)
+            else:
+                val_resized = F.interpolate(val, (h,w), mode='nearest').unsqueeze(0)
+                key_resized = F.interpolate(key, (h,w), mode='nearest').unsqueeze(0)
 
-            #if h > val.shape[2]:
-           #    #upsample
-            #    val_resized = F.interpolate(val, (h,w), mode='nearest')
-            #    key_resized = F.interpolate(key, (h,w), mode='nearest')
-            #else:
-                #downsample
-            #    maxpool = nn.AvgPool2d((val.shape[2]//h, val.shape[2]//h))
-            #    val_resized = maxpool(val)
-            #    key_resized = maxpool(key)
-
-            val_resized = val_resized.reshape((sz_b, self.n_heads,self.val_size,h,w)).permute(0,3,4,1,2).reshape((sz_b*h*w*self.n_heads, 1, self.val_size))#.repeat(1,self.n_heads,1,1)
+            n_pos = val_resized.shape[0]
+            val_resized = val_resized.reshape((n_pos, sz_b, self.n_heads,self.val_size,h,w)).permute(1,4,5,2,0,3).reshape((sz_b*h*w*self.n_heads, n_pos, self.val_size))#.repeat(1,self.n_heads,1,1)
             vals_reshaped.append(val_resized)
-            key_old = key_resized.reshape((sz_b,self.n_heads,self.key_size,h,w)).permute(0,3,4,1,2).reshape((sz_b*h*w*self.n_heads, 1, self.key_size))
+            key_old = key_resized.reshape((n_pos, sz_b,self.n_heads,self.key_size,h,w)).permute(1,4,5,2,0,3).reshape((sz_b*h*w*self.n_heads, n_pos, self.key_size))
             keys_reshaped.append(key_old)
 
         vals_tensor = torch.cat(vals_reshaped, dim = 1)
         keys_tensor = torch.cat(keys_reshaped, dim = 1)
 
+        keys_tensor = torch.cat([keys_tensor, torch.zeros_like(keys_tensor[:,0:1])], dim=1)
+        vals_tensor = torch.cat([vals_tensor, torch.zeros_like(vals_tensor[:,0:1])], dim=1)
+ 
         #print('query shape', query.shape)
         #print('vals tensor shape', vals_tensor.shape)
         #print('keys tensor shape', keys_tensor.shape)
