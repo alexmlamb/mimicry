@@ -11,25 +11,33 @@ add_name='POSWITHCONCAT_CIFAR_NFL_'$ad_heads'_topk_'$topk'_key_'$ad_key'_val_'$a
 
 python /home/anirudh/nips2020/mimicry/examples/infomax_example.py --n_heads $ad_heads --topk $topk --key_size $ad_key --val_size $ad_value --name $add_name
 
+#Normal, NFL, 2, 3, 32, 32
 
-#dim1=$1
-#em=$1
-#block1=$2
-#topk1=$3
-#templates=0
-#drop=0.2
-#log=100
-#train_len=50
-#test_len=100
-#memory_slots=$4
-#num_memory_heads=$5
-#memory_head_size=$6
-#memory_mlp=$7
-#lr=$8
-#600 6 4 8 1 16 4 0.001
-#name="/home/anirudh/nips2020/soft_mechanisms/copying_logs/Blocks_memory_"$dim1"_"$em"_"$block1"_"$topk1"_"$templates"_FALSE_"$drop"_"$lr"_"$log"_"$train_len"_"$test_len"_mslots_"$memory_slots"_mheads_"$num_memory_heads"_mheadsize_"$memory_head_size"_memory_mlp_"$memory_mlp
-#name="${name//./}"
-#echo Running version $name
-#python /home/anirudh/nips2020/soft_mechanisms/train_copying.py --cuda  --cudnn --n_templates $templates  --algo blocks --do_rel --memory_mlp $memory_mlp  --memory_slot $memory_slots --memory_head_size $memory_head_size --num_memory_heads $num_memory_heads  --name $name --lr $lr --drop $drop --nhid $dim1 --num_blocks $block1 --topk $topk1 --nlayers 1 --emsize $em --log-interval $log --train_len $train_len --test_len $test_len
+#Normal NFL
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.0859 sec/batch)INFO: FID Score: 13.320379647181596 [Time Taken: 329.4758 secs]
+#INFO: FID (step 100000) [seed 0]: 13.320379647181596
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.0866 sec/batch)INFO: FID Score: 13.238847502112776 [Time Taken: 317.4488 secs]
+#INFO: FID (step 100000) [seed 1]: 13.238847502112776
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.0858 sec/batch)INFO: FID Score: 13.527627704035012 [Time Taken: 317.0002 secs]
+#INFO: FID (step 100000) [seed 2]: 13.527627704035012
+#INFO: FID (step 100000): 13.362284951109794 (± 0.12156079995499623)
+#INFO: FID Evaluation completed!
+#==========================
 
-# borgy submit --gpu 1 --cpu 2 --mem 48 --gpu-mem 16 --preemptable -i images.borgy.elementai.net/anirudh/anirudh_global_workcase:v1 -v /home/anirudh/:/home/anirudh/ -- /bin/bash /home/anirudh/nips2020/soft_mechanisms/experiment_copying.sh 300 6 4 50 200 4 4 16 4 0.0007
+
+#Extra capacity baseline
+#anirudh@dc1-wks-07:~$ borgy logs 887468b7-b7be-499a-99e6-245b0f3bb40f | grep 'FID'
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.0926 sec/batch)INFO: FID Score: 14.68983806759178 [Time Taken: 352.7942 secs]
+#INFO: FID (step 100000) [seed 0]: 14.68983806759178
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.0917 sec/batch)INFO: FID Score: 14.676007390649374 [Time Taken: 342.0534 secs]
+#INFO: FID (step 100000) [seed 1]: 14.676007390649374
+#INFO: Computing FID in memory...
+#INFO: Propagated batch 1000/1000 (0.1157 sec/batch)INFO: FID Score: 14.751740487988002 [Time Taken: 339.2834 secs]
+#INFO: FID (step 100000) [seed 2]: 14.751740487988002
+#INFO: FID (step 100000): 14.705861982076385 (± 0.03292870970934004)
+#INFO: FID Evaluation completed!
