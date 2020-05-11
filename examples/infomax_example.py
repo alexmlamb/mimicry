@@ -34,7 +34,7 @@ if __name__ == "__main__":
     #netG = sngan.SNGANGenerator32().to(device)
     #netD = sngan.SNGANDiscriminator32().to(device)
 
-    netG = infomax_gan.InfoMaxGANGenerator32(use_nfl=args.use_nfl, key_size=args.key_size, val_size=args.val_size, n_heads = args.n_heads, topk=args.topk).to(device)
+    netG = infomax_gan.InfoMaxGANGenerator32(use_nfl=args.use_nfl, key_size=args.key_size, val_size=args.val_size, n_heads = args.n_heads, topk=args.topk, pos_attend=True).to(device)
     netD = infomax_gan.InfoMaxGANDiscriminator32().to(device)
 
     #netG = infomax_gan.InfoMaxGANGenerator32().to(device)
