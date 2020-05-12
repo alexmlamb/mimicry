@@ -15,7 +15,7 @@ class InfoMaxGANBaseGenerator(gan.BaseGenerator):
         nz (int): Noise dimension for upsampling.
         ngf (int): Variable controlling generator feature map sizes.
         bottom_width (int): Starting width for upsampling generator output to an image.
-        loss_type (str): Name of loss to use for GAN loss.        
+        loss_type (str): Name of loss to use for GAN loss.
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
     def __init__(self,
@@ -153,7 +153,7 @@ class BaseDiscriminator(gan.BaseDiscriminator):
 
     def infonce_loss(self, l, m):
         r"""
-        InfoNCE loss for local and global feature maps as used in DIM: 
+        InfoNCE loss for local and global feature maps as used in DIM:
         https://github.com/rdevon/DIM/blob/master/cortex_DIM/functions/dim_losses.py
 
         Args:
@@ -234,7 +234,7 @@ class BaseDiscriminator(gan.BaseDiscriminator):
                    netG,
                    optD,
                    log_data,
-                   device=None,                   
+                   device=None,
                    global_step=None,
                    **kwargs):
         r"""

@@ -6,7 +6,7 @@ ad_heads=$1
 topk=$2
 ad_key=$3
 ad_value=$4
-add_name='LSUN_'$ad_heads'_topk_'$topk'_key_'$ad_key'_val_'$ad_value
+add_name='POSWITHCONCATLSUN_'$ad_heads'_topk_'$topk'_key_'$ad_key'_val_'$ad_value
 
 python /home/anirudh/nips2020/mimicry/examples/infomax_lsun_example.py --n_heads $ad_heads --topk $topk --key_size $ad_key --val_size $ad_value --name $add_name
 

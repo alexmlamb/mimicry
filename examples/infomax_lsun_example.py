@@ -25,18 +25,14 @@ if __name__ == "__main__":
     #ipdb.set_trace()
     # Data handling objects
     device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
-    print(device)
     dataset = mmc.datasets.load_dataset(root='/home/anirudh/lsun/', name='lsun_bedroom_128')
-    print(device)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True, num_workers=2)
-    print(device)
 
     # Define models and optimizers
 
     #netG = sngan.SNGANGenerator32().to(device)
     #netD = sngan.SNGANDiscriminator32().to(device)
-    print(args)
-    netG = infomax_gan.InfoMaxGANGenerator128(use_nfl=args.use_nfl, key_size=args.key_size, val_size=args.val_size, n_heads = args.n_heads, topk=args.topk).to(device)
+    netG = infomax_gan.InfoMaxGANGenerator128(use_nfl=args.use_nfl, key_size=args.key_size, val_size=args.val_size, n_heads = args.n_heads, topk=args.topk,  pos_attend=True).to(device)
     netD = infomax_gan.InfoMaxGANDiscriminator128().to(device)
 
 
