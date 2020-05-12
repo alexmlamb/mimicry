@@ -9,6 +9,7 @@ from torch_mimicry.nets.cgan_pd import cgan_pd_base
 from torch_mimicry.modules import SNLinear, SNEmbedding
 from torch_mimicry.modules.resblocks import DBlockOptimized, DBlock, GBlock
 
+from attentive_densenet import AttentiveDensenet
 
 class CGANPDGenerator32(cgan_pd_base.CGANPDBaseGenerator):
     r"""
@@ -21,12 +22,17 @@ class CGANPDGenerator32(cgan_pd_base.CGANPDBaseGenerator):
         bottom_width (int): Starting width for upsampling generator output to an image.
         loss_type (str): Name of loss to use for GAN loss.        
     """
-    def __init__(self, num_classes, bottom_width=4, nz=128, ngf=256, **kwargs):
+    def __init__(self, num_classes, bottom_width=4, nz=128, ngf=256,use_nfl=True, key_size=32, val_size=32, n_heads = 4, topk=3, pos_attend=True, **kwargs):
         super().__init__(nz=nz,
                          ngf=ngf,
                          bottom_width=bottom_width,
                          num_classes=num_classes,
                          **kwargs)
+
+        self.use_nfl = use_nfl
+        if use_nfl:
+            print('using nfl!', key_size, val_size, n_heads, topk, pos_attend)
+            self.ad = AttentiveDensenet(layer_channels=[self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf,self.ngf], key_size=key_size, val_size=val_size, n_heads=n_heads, topk=topk, position_attend=pos_attend)
 
         # Build the layers
         self.l1 = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
@@ -42,13 +48,34 @@ class CGANPDGenerator32(cgan_pd_base.CGANPDBaseGenerator):
                              self.ngf,
                              upsample=True,
                              num_classes=self.num_classes)
-        self.b5 = nn.BatchNorm2d(self.ngf)
-        self.c5 = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+        #self.b5 = nn.BatchNorm2d(self.ngf)
+        #self.c5 = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
+
+        self.l1_b = nn.Linear(self.nz, (self.bottom_width**2) * self.ngf)
+        self.block2_b = GBlock(self.ngf,
+                             self.ngf,
+                             upsample=True,
+                             num_classes=self.num_classes)
+        self.block3_b = GBlock(self.ngf,
+                             self.ngf,
+                             upsample=True,
+                             num_classes=self.num_classes)
+        self.block4_b = GBlock(self.ngf,
+                             self.ngf,
+                             upsample=True,
+                             num_classes=self.num_classes)
+        self.b5_b = nn.BatchNorm2d(self.ngf)
+        self.c5_b = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
+
         self.activation = nn.ReLU(True)
+
 
         # Initialise the weights
         nn.init.xavier_uniform_(self.l1.weight.data, 1.0)
-        nn.init.xavier_uniform_(self.c5.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.l1_b.weight.data, 1.0)
+        nn.init.xavier_uniform_(self.c5_b.weight.data, 1.0)
 
     def forward(self, x, y=None):
         r"""
@@ -62,20 +89,43 @@ class CGANPDGenerator32(cgan_pd_base.CGANPDBaseGenerator):
         Returns:
             Tensor: A batch of fake images of shape (N, C, H, W).
         """
+
+        if self.use_nfl:
+            self.ad.reset()
+
         if y is None:
             y = torch.randint(low=0,
                               high=self.num_classes,
                               size=(x.shape[0], ),
                               device=x.device)
 
-        h = self.l1(x)
+        if self.use_nfl:
+            h = self.l1(x)
+            h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
+            h = self.ad(h,write=True,read=False)
+            h = self.block2(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block3(h)
+            h = self.ad(h,write=True,read=False)
+            h = self.block4(h)
+            h = self.ad(h,write=True,read=False)
+
+        h = self.l1_b(x)
         h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
-        h = self.block2(h, y)
-        h = self.block3(h, y)
-        h = self.block4(h, y)
-        h = self.b5(h)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block2_b(h, y)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block3_b(h, y)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.block4_b(h, y)
+        if self.use_nfl:
+            h = self.ad(h,write=True,read=True)
+        h = self.b5_b(h)
         h = self.activation(h)
-        h = torch.tanh(self.c5(h))
+        h = torch.tanh(self.c5_b(h))
 
         return h
 
