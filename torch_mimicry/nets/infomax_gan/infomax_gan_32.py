@@ -6,7 +6,8 @@ import torch.nn as nn
 
 from torch_mimicry.nets.infomax_gan import infomax_gan_base
 from torch_mimicry.modules.layers import SNConv2d, SNLinear
-from torch_mimicry.modules.resblocks import DBlockOptimized, DBlock, GBlock
+from torch_mimicry.modules.resblocks import DBlockOptimized, DBlock
+from torch_mimicry.modules.resblocks import GBlock
 
 from torch_mimicry.nets.infomax_gan.attentive_densenet import AttentiveDensenet
 
@@ -21,7 +22,7 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         loss_type (str): Name of loss to use for GAN loss.
         infomax_loss_scale (float): The alpha parameter used for scaling the generator infomax loss.
     """
-    def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, **kwargs):
+    def __init__(self, nz=128, ngf=256, bottom_width=4, use_nfl=True, double_layers = False, **kwargs):
         super().__init__(nz=nz, ngf=ngf, bottom_width=bottom_width, **kwargs)
 
         self.use_nfl = use_nfl
@@ -45,6 +46,12 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         self.block4_b = GBlock(self.ngf, self.ngf, upsample=True)
         self.b5_b = nn.BatchNorm2d(self.ngf)
         self.c5_b = nn.Conv2d(self.ngf, 3, 3, 1, padding=1)
+
+        self.double_layers = double_layers
+        if double_layers: 
+            self.block2_bd = GBlock(self.ngf, self.ngf, upsample=False)
+            self.block3_bd = GBlock(self.ngf, self.ngf, upsample=False)
+            self.block4_bd = GBlock(self.ngf, self.ngf, upsample=False)
 
         self.activation = nn.ReLU(True)
 
@@ -82,12 +89,18 @@ class InfoMaxGANGenerator32(infomax_gan_base.InfoMaxGANBaseGenerator):
         h = h.view(x.shape[0], -1, self.bottom_width, self.bottom_width)
         if self.use_nfl:
             h = self.ad(h,write=True,read=True)
+        if self.double_layers:
+            h = self.block2_bd(h)
         h = self.block2_b(h)
         if self.use_nfl:
             h = self.ad(h,write=True,read=True)
+        if self.double_layers:
+            h = self.block3_bd(h)
         h = self.block3_b(h)
         if self.use_nfl:
             h = self.ad(h,write=True,read=True)
+        if self.double_layers:
+            h = self.block4_bd(h)
         h = self.block4_b(h)
         if self.use_nfl:
             h = self.ad(h,write=True,read=True)
@@ -174,3 +187,9 @@ class InfoMaxGANDiscriminator32(infomax_gan_base.BaseDiscriminator):
         output = self.linear(global_feat)
 
         return output, local_feat, global_feat
+
+
+
+
+
+
